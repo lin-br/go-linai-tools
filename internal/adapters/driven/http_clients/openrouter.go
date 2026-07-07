@@ -13,8 +13,7 @@ import (
 )
 
 const (
-	OpenRouterModel = "openrouter/owl-alpha"
-	OpenRouterUrl   = "https://openrouter.ai/api/v1/messages"
+	OpenRouterUrl = "https://openrouter.ai/api/v1/messages"
 )
 
 type OpenRouterClient struct {
@@ -25,9 +24,14 @@ func NewOpenRouterClient(config configs.Config) *OpenRouterClient {
 	return &OpenRouterClient{configs: config}
 }
 
-func (o OpenRouterClient) DoMessagesRequest(prompt string) (string, error) {
+func (o *OpenRouterClient) DoMessagesRequest(prompt string, model *string) (string, error) {
+	model, err := o.parseModel(model)
+	if err != nil {
+		return "", err
+	}
+
 	client := &http.Client{Timeout: 5 * time.Minute}
-	payload := o.makePayload(prompt)
+	payload := o.makePayload(prompt, *model)
 	request := o.makeRequest(payload)
 
 	response, err := client.Do(request)
@@ -56,7 +60,7 @@ func (o OpenRouterClient) DoMessagesRequest(prompt string) (string, error) {
 	return "", errors.New("response contents is empty")
 }
 
-func (o OpenRouterClient) makeRequest(payload *bytes.Reader) *http.Request {
+func (o *OpenRouterClient) makeRequest(payload *bytes.Reader) *http.Request {
 	request, err := http.NewRequest(http.MethodPost, OpenRouterUrl, payload)
 	if err != nil {
 		log.Fatal(err)
@@ -67,9 +71,9 @@ func (o OpenRouterClient) makeRequest(payload *bytes.Reader) *http.Request {
 	return request
 }
 
-func (o OpenRouterClient) makePayload(prompt string) *bytes.Reader {
+func (o *OpenRouterClient) makePayload(prompt string, model string) *bytes.Reader {
 	body := map[string]interface{}{
-		"model": OpenRouterModel,
+		"model": model,
 		"messages": []map[string]string{
 			{
 				"role":    "user",
@@ -80,4 +84,14 @@ func (o OpenRouterClient) makePayload(prompt string) *bytes.Reader {
 	jsonString, _ := json.Marshal(body)
 	payload := bytes.NewReader(jsonString)
 	return payload
+}
+
+func (o *OpenRouterClient) parseModel(model *string) (*string, error) {
+	if model == nil {
+		if o.configs.Models.Get() == nil {
+			return nil, errors.New("the AI model is empty")
+		}
+		return o.configs.Models.Get(), nil
+	}
+	return model, nil
 }

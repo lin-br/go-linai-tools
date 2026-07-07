@@ -1,1 +1,5 @@
 openrouter_api_key: ${OPENROUTER_API_KEY}
+models:
+  default: ${DEFAULT_MODEL}
+  pro: ${PRO_MODEL}
+  free: ${FREE_MODEL}

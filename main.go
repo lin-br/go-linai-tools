@@ -17,7 +17,7 @@ func main() {
 	fmt.Println("What you need?")
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
-	response, err := openRouter.DoMessagesRequest(scanner.Text())
+	response, err := openRouter.DoMessagesRequest(scanner.Text(), nil)
 	if err != nil {
 		log.Fatal(err)
 	}

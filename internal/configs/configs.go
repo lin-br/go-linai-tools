@@ -8,8 +8,35 @@ import (
 
 const propertiesFilePath = "./internal/configs/configs.yaml"
 
+func isValid(a *string) bool {
+	if a == nil || *a == "" {
+		return false
+	}
+	return true
+}
+
+type Models struct {
+	Default *string `yaml:"default"`
+	Pro     *string `yaml:"pro"`
+	Free    *string `yaml:"free"`
+}
+
+func (m *Models) Get() *string {
+	if isValid(m.Default) {
+		return m.Default
+	}
+	if isValid(m.Pro) {
+		return m.Pro
+	}
+	if isValid(m.Free) {
+		return m.Free
+	}
+	return nil
+}
+
 type Config struct {
 	OpenRouterApiKey *string `yaml:"openrouter_api_key"`
+	Models           *Models `yaml:"models"`
 }
 
 func LoadConfigs() (*Config, error) {
