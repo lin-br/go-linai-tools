@@ -1,7 +1,7 @@
 package http_clients
 
-// AnthropicMessageResponse is the top-level response from the Messages API.
-type AnthropicMessageResponse struct {
+// MessageResponse is the top-level response from the Messages API.
+type MessageResponse struct {
 	ID           string              `json:"id"`
 	Container    *Container          `json:"container"`
 	Content      []ContentBlock      `json:"content"`
