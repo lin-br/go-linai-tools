@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/lin-br/go-linai-tools/internal/configs"
+	"github.com/lin-br/go-linai-tools/internal/core/domain"
 )
 
 const (
@@ -24,40 +25,35 @@ func NewOpenRouterClient(config configs.Config) *OpenRouterClient {
 	return &OpenRouterClient{configs: config}
 }
 
-func (o *OpenRouterClient) DoMessagesRequest(prompt string, model *string) (string, error) {
-	model, err := o.parseModel(model)
-	if err != nil {
-		return "", err
-	}
-
+func (o *OpenRouterClient) DoMessagesRequest(request *domain.Request) (*domain.Response, error) {
 	client := &http.Client{Timeout: 5 * time.Minute}
-	payload := o.makePayload(prompt, *model)
-	request := o.makeRequest(payload)
+	payload := o.makePayload(request.Message, request.Model)
+	clientRequest := o.makeRequest(payload)
 
-	response, err := client.Do(request)
+	response, err := client.Do(clientRequest)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer response.Body.Close()
 
 	respBody, err := io.ReadAll(response.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	log.Println(string(respBody))
-	var messageResponse AnthropicMessageResponse
+	var messageResponse MessageResponse
 	err = json.Unmarshal(respBody, &messageResponse)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	contents := messageResponse.Content
 	for _, content := range contents {
 		if content.Type == "text" {
-			return content.Text, nil
+			return &domain.Response{Message: content.Text}, nil
 		}
 	}
-	return "", errors.New("response contents is empty")
+	return nil, errors.New("response contents is empty")
 }
 
 func (o *OpenRouterClient) makeRequest(payload *bytes.Reader) *http.Request {
@@ -84,14 +80,4 @@ func (o *OpenRouterClient) makePayload(prompt string, model string) *bytes.Reade
 	jsonString, _ := json.Marshal(body)
 	payload := bytes.NewReader(jsonString)
 	return payload
-}
-
-func (o *OpenRouterClient) parseModel(model *string) (*string, error) {
-	if model == nil {
-		if o.configs.Models.Get() == nil {
-			return nil, errors.New("the AI model is empty")
-		}
-		return o.configs.Models.Get(), nil
-	}
-	return model, nil
 }

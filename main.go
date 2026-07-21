@@ -8,16 +8,18 @@ import (
 
 	clients "github.com/lin-br/go-linai-tools/internal/adapters/driven/http_clients"
 	"github.com/lin-br/go-linai-tools/internal/configs"
+	"github.com/lin-br/go-linai-tools/internal/core/usecases"
 )
 
 func main() {
 	properties := getProperties()
 	openRouter := clients.NewOpenRouterClient(*properties)
+	sendMessageUseCase := usecases.NewSendMessageUseCase(*properties, openRouter)
 
 	fmt.Println("What you need?")
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
-	response, err := openRouter.DoMessagesRequest(scanner.Text(), nil)
+	response, err := sendMessageUseCase.Send(scanner.Text())
 	if err != nil {
 		log.Fatal(err)
 	}

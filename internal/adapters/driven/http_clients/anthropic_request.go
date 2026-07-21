@@ -2,19 +2,19 @@ package http_clients
 
 // MessagesRequest is the top-level request body for the Messages API.
 type MessagesRequest struct {
-	Model        string             `json:"model"`
-	Messages     []Message          `json:"messages"`
-	MaxTokens    int64              `json:"max_tokens"`
-	System       []TextContentBlock `json:"system,omitempty"`
-	Temperature  *float64           `json:"temperature,omitempty"`
-	Thinking     *ThinkingConfig    `json:"thinking,omitempty"`
-	ToolChoice   *ToolChoice        `json:"tool_choice,omitempty"`
-	Tools        []ToolUnion        `json:"tools,omitempty"`
-	TopK         *int64             `json:"top_k,omitempty"`
-	TopP         *float64           `json:"top_p,omitempty"`
-	StopSequences []string          `json:"stop_sequences,omitempty"`
-	Metadata     *Metadata          `json:"metadata,omitempty"`
-	ServiceTier  string             `json:"service_tier,omitempty"`
+	Model         string             `json:"model"`
+	Messages      []Message          `json:"messages"`
+	MaxTokens     int64              `json:"max_tokens"`
+	System        []TextContentBlock `json:"system,omitempty"`
+	Temperature   *float64           `json:"temperature,omitempty"`
+	Thinking      *ThinkingConfig    `json:"thinking,omitempty"`
+	ToolChoice    *ToolChoice        `json:"tool_choice,omitempty"`
+	Tools         []ToolUnion        `json:"tools,omitempty"`
+	TopK          *int64             `json:"top_k,omitempty"`
+	TopP          *float64           `json:"top_p,omitempty"`
+	StopSequences []string           `json:"stop_sequences,omitempty"`
+	Metadata      *Metadata          `json:"metadata,omitempty"`
+	ServiceTier   string             `json:"service_tier,omitempty"`
 }
 
 // Message represents a single message in the conversation.
@@ -69,11 +69,11 @@ type ThinkingContentBlock struct {
 
 // DocumentContentBlock represents a document content block (PDF or plain text).
 type DocumentContentBlock struct {
-	Type         string        `json:"type"`
+	Type         string         `json:"type"`
 	Source       DocumentSource `json:"source"`
-	Context      string        `json:"context,omitempty"`
-	Title        string        `json:"title,omitempty"`
-	CacheControl *CacheControl `json:"cache_control,omitempty"`
+	Context      string         `json:"context,omitempty"`
+	Title        string         `json:"title,omitempty"`
+	CacheControl *CacheControl  `json:"cache_control,omitempty"`
 }
 
 // DocumentSource holds the base64-encoded document data.
@@ -85,17 +85,17 @@ type DocumentSource struct {
 
 // ToolUnion is a union type for tool definitions (custom or server-side).
 type ToolUnion struct {
-	Type              string          `json:"type"`
-	Name              string          `json:"name,omitempty"`
-	Description       string          `json:"description,omitempty"`
-	InputSchema       *ToolInputSchema `json:"input_schema,omitempty"`
-	CacheControl      *CacheControl   `json:"cache_control,omitempty"`
-	DeferLoading      bool            `json:"defer_loading,omitempty"`
-	MaxContentTokens  *int64          `json:"max_content_tokens,omitempty"`
-	MaxUses           *int64          `json:"max_uses,omitempty"`
-	AllowedDomains    []string        `json:"allowed_domains,omitempty"`
-	BlockedDomains    []string        `json:"blocked_domains,omitempty"`
-	UserLocation      *UserLocation   `json:"user_location,omitempty"`
+	Type             string           `json:"type"`
+	Name             string           `json:"name,omitempty"`
+	Description      string           `json:"description,omitempty"`
+	InputSchema      *ToolInputSchema `json:"input_schema,omitempty"`
+	CacheControl     *CacheControl    `json:"cache_control,omitempty"`
+	DeferLoading     bool             `json:"defer_loading,omitempty"`
+	MaxContentTokens *int64           `json:"max_content_tokens,omitempty"`
+	MaxUses          *int64           `json:"max_uses,omitempty"`
+	AllowedDomains   []string         `json:"allowed_domains,omitempty"`
+	BlockedDomains   []string         `json:"blocked_domains,omitempty"`
+	UserLocation     *UserLocation    `json:"user_location,omitempty"`
 }
 
 // ToolInputSchema defines the JSON Schema for a custom tool's input.
@@ -122,9 +122,9 @@ type ThinkingConfig struct {
 
 // ToolChoice specifies how the model should use tools.
 type ToolChoice struct {
-	Type   string `json:"type"`
-	Name   string `json:"name,omitempty"`
-	DisableParallelToolUse bool `json:"disable_parallel_tool_use,omitempty"`
+	Type                   string `json:"type"`
+	Name                   string `json:"name,omitempty"`
+	DisableParallelToolUse bool   `json:"disable_parallel_tool_use,omitempty"`
 }
 
 // CacheControl marks a content block for prompt caching.
@@ -145,21 +145,21 @@ const (
 
 // ContentBlockType constants
 const (
-	ContentTypeText            = "text"
-	ContentTypeImage           = "image"
-	ContentTypeToolUse         = "tool_use"
-	ContentTypeToolResult      = "tool_result"
-	ContentTypeThinking        = "thinking"
-	ContentTypeDocument        = "document"
+	ContentTypeText       = "text"
+	ContentTypeImage      = "image"
+	ContentTypeToolUse    = "tool_use"
+	ContentTypeToolResult = "tool_result"
+	ContentTypeThinking   = "thinking"
+	ContentTypeDocument   = "document"
 )
 
 // ToolType constants
 const (
-	ToolTypeCustom              = "custom"
-	ToolTypeWebSearch20250305   = "web_search_20250305"
-	ToolTypeWebFetch20250910    = "web_fetch_20250910"
+	ToolTypeCustom                = "custom"
+	ToolTypeWebSearch20250305     = "web_search_20250305"
+	ToolTypeWebFetch20250910      = "web_fetch_20250910"
 	ToolTypeCodeExecution20250825 = "code_execution_20250825"
-	ToolTypeTextEditor20250728  = "text_editor_20250728"
+	ToolTypeTextEditor20250728    = "text_editor_20250728"
 )
 
 // ThinkingType constants
@@ -170,10 +170,10 @@ const (
 
 // ToolChoiceType constants
 const (
-	ToolChoiceAuto     = "auto"
-	ToolChoiceAny      = "any"
-	ToolChoiceTool     = "tool"
-	ToolChoiceNone     = "none"
+	ToolChoiceAuto = "auto"
+	ToolChoiceAny  = "any"
+	ToolChoiceTool = "tool"
+	ToolChoiceNone = "none"
 )
 
 // Service tier constants
