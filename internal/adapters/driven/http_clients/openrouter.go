@@ -2,82 +2,173 @@ package http_clients
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
-	"log"
 	"net/http"
-	"time"
 
-	"github.com/lin-br/go-linai-tools/internal/configs"
 	"github.com/lin-br/go-linai-tools/internal/core/domain"
 )
 
-const (
-	OpenRouterUrl = "https://openrouter.ai/api/v1/messages"
-)
+const openRouterBaseURL = "https://openrouter.ai/api/v1/chat/completions"
 
-type OpenRouterClient struct {
-	configs configs.Config
+// OpenRouterProvider implements the outbound.Provider interface for OpenRouter.
+type OpenRouterProvider struct {
+	apiKey string
+	client *http.Client
 }
 
-func NewOpenRouterClient(config configs.Config) *OpenRouterClient {
-	return &OpenRouterClient{configs: config}
+// NewOpenRouterProvider creates a provider backed by OpenRouter.
+func NewOpenRouterProvider(apiKey string) *OpenRouterProvider {
+	return &OpenRouterProvider{
+		apiKey: apiKey,
+		client: http.DefaultClient,
+	}
 }
 
-func (o *OpenRouterClient) DoMessagesRequest(request *domain.Request) (*domain.Response, error) {
-	client := &http.Client{Timeout: 5 * time.Minute}
-	payload := o.makePayload(request.Message, request.Model)
-	clientRequest := o.makeRequest(payload)
-
-	response, err := client.Do(clientRequest)
-	if err != nil {
-		return nil, err
-	}
-	defer response.Body.Close()
-
-	respBody, err := io.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
-	}
-	log.Println(string(respBody))
-	var messageResponse MessageResponse
-	err = json.Unmarshal(respBody, &messageResponse)
+// Chat sends a non-streaming chat completion request to OpenRouter.
+func (o *OpenRouterProvider) Chat(ctx context.Context, req *domain.ChatRequest) (*domain.ChatResponse, error) {
+	payload := o.toWire(req)
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	contents := messageResponse.Content
-	for _, content := range contents {
-		if content.Type == "text" {
-			return &domain.Response{Message: content.Text}, nil
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, openRouterBaseURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+
+	o.setHeaders(httpReq)
+
+	resp, err := o.client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("openrouter returned HTTP %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var wireResp ChatCompletionResponse
+	if err := json.Unmarshal(respBody, &wireResp); err != nil {
+		return nil, err
+	}
+
+	return o.fromWire(&wireResp), nil
+}
+
+// ChatStream returns a not-implemented error; streaming is wired in MP1.
+func (o *OpenRouterProvider) ChatStream(ctx context.Context, req *domain.ChatRequest) (<-chan domain.StreamEvent, error) {
+	return nil, errors.New("streaming not implemented yet")
+}
+
+func (o *OpenRouterProvider) setHeaders(req *http.Request) {
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+o.apiKey)
+	req.Header.Set("HTTP-Referer", "lin.com.br")
+	req.Header.Set("X-OpenRouter-Title", "lin.com.br")
+}
+
+func (o *OpenRouterProvider) toWire(req *domain.ChatRequest) *ChatCompletionRequest {
+	wire := &ChatCompletionRequest{
+		Model:       req.Model,
+		MaxTokens:   req.MaxTokens,
+		Temperature: req.Temperature,
+		TopP:        req.TopP,
+		Stream:      req.Stream,
+	}
+
+	messages := make([]WireMessage, 0, len(req.Messages)+1)
+
+	if req.System != "" {
+		messages = append(messages, WireMessage{Role: domain.MessageRoleSystem, Content: req.System})
+	}
+
+	for _, m := range req.Messages {
+		wm := WireMessage{
+			Role:       m.Role,
+			Content:    m.Content,
+			ToolCallID: m.ToolCallID,
+		}
+		if len(m.ToolCalls) > 0 {
+			wm.ToolCalls = make([]WireToolCall, len(m.ToolCalls))
+			for i, tc := range m.ToolCalls {
+				wm.ToolCalls[i] = WireToolCall{
+					ID:   tc.ID,
+					Type: "function",
+					Function: WireFuncCall{
+						Name:      tc.Name,
+						Arguments: tc.Arguments,
+					},
+				}
+			}
+		}
+		messages = append(messages, wm)
+	}
+
+	wire.Messages = messages
+
+	if len(req.Tools) > 0 {
+		wire.Tools = make([]WireTool, len(req.Tools))
+		for i, t := range req.Tools {
+			wire.Tools[i] = WireTool{
+				Type: "function",
+				Function: WireFunction{
+					Name:        t.Name,
+					Description: t.Description,
+					Parameters:  t.InputSchema,
+				},
+			}
 		}
 	}
-	return nil, errors.New("response contents is empty")
+
+	if req.ToolChoice != nil {
+		wire.ToolChoice = &WireToolChoice{Type: req.ToolChoice.Type}
+		if req.ToolChoice.Type == domain.ToolChoiceTool {
+			wire.ToolChoice.Function = WireFuncChoice{Name: req.ToolChoice.Name}
+		}
+	}
+
+	return wire
 }
 
-func (o *OpenRouterClient) makeRequest(payload *bytes.Reader) *http.Request {
-	request, err := http.NewRequest(http.MethodPost, OpenRouterUrl, payload)
-	if err != nil {
-		log.Fatal(err)
-	}
-	request.Header.Add("Authorization", "Bearer "+*o.configs.OpenRouterApiKey)
-	request.Header.Add("HTTP-Referer", "lin.com.br")
-	request.Header.Add("X-OpenRouter-Title", "lin.com.br")
-	return request
-}
+func (o *OpenRouterProvider) fromWire(resp *ChatCompletionResponse) *domain.ChatResponse {
+	out := &domain.ChatResponse{Model: resp.Model}
 
-func (o *OpenRouterClient) makePayload(prompt string, model string) *bytes.Reader {
-	body := map[string]interface{}{
-		"model": model,
-		"messages": []map[string]string{
-			{
-				"role":    "user",
-				"content": prompt,
-			},
-		},
+	if len(resp.Choices) > 0 {
+		choice := resp.Choices[0]
+		out.Content = choice.Message.Content
+		out.StopReason = choice.FinishReason
+
+		if len(choice.Message.ToolCalls) > 0 {
+			out.ToolCalls = make([]domain.ToolCall, len(choice.Message.ToolCalls))
+			for i, tc := range choice.Message.ToolCalls {
+				out.ToolCalls[i] = domain.ToolCall{
+					ID:        tc.ID,
+					Name:      tc.Function.Name,
+					Arguments: tc.Function.Arguments,
+				}
+			}
+		}
 	}
-	jsonString, _ := json.Marshal(body)
-	payload := bytes.NewReader(jsonString)
-	return payload
+
+	if resp.Usage != nil {
+		out.Usage = domain.Usage{
+			InputTokens:  resp.Usage.PromptTokens,
+			OutputTokens: resp.Usage.CompletionTokens,
+			TotalTokens:  resp.Usage.TotalTokens,
+			Cost:         resp.Usage.Cost,
+		}
+	}
+
+	return out
 }

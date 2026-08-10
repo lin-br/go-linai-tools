@@ -1,7 +1,10 @@
 package inbound
 
-import "io"
+import (
+	"context"
+	"io"
+)
 
 type Entrypoint interface {
-	StartAgent(in io.Reader, out io.Writer)
+	StartAgent(ctx context.Context, in io.Reader, out io.Writer)
 }

@@ -1,10 +1,17 @@
 package domain
 
-type Request struct {
-	Model   string
-	Message string
+// Message represents a single message in a conversation.
+type Message struct {
+	Role        string
+	Content     string
+	ToolCalls   []ToolCall
+	ToolCallID  string
 }
 
-type Response struct {
-	Message string
-}
+// Common message roles.
+const (
+	MessageRoleUser      = "user"
+	MessageRoleAssistant = "assistant"
+	MessageRoleSystem    = "system"
+	MessageRoleTool      = "tool"
+)

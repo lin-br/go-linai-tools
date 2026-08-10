@@ -1,6 +1,7 @@
 package configs
 
 import (
+	"fmt"
 	"os"
 
 	"go.yaml.in/yaml/v4"
@@ -14,6 +15,13 @@ func isValid(a *string) bool {
 	}
 	return true
 }
+
+// Provider constants.
+const (
+	ProviderOpenRouter = "openrouter"
+	ProviderAnthropic  = "anthropic"
+	ProviderBedrock    = "bedrock"
+)
 
 type Models struct {
 	Default *string `yaml:"default"`
@@ -35,7 +43,10 @@ func (m *Models) Get() *string {
 }
 
 type Config struct {
+	Provider         string  `yaml:"provider"`
 	OpenRouterApiKey *string `yaml:"openrouter_api_key"`
+	AnthropicApiKey  *string `yaml:"anthropic_api_key"`
+	BedrockRegion    *string `yaml:"bedrock_region"`
 	Models           *Models `yaml:"models"`
 }
 
@@ -52,5 +63,21 @@ func LoadConfigs() (*Config, error) {
 	if err := yaml.Unmarshal([]byte(expandedContent), properties); err != nil {
 		return nil, err
 	}
+
+	if properties.Provider == "" {
+		properties.Provider = ProviderOpenRouter
+	}
+
+	switch properties.Provider {
+	case ProviderOpenRouter:
+		if !isValid(properties.OpenRouterApiKey) {
+			return nil, fmt.Errorf("openrouter_api_key is required when provider is %s", ProviderOpenRouter)
+		}
+	case ProviderAnthropic, ProviderBedrock:
+		// Provider-specific credentials are optional when the provider is not active.
+	default:
+		return nil, fmt.Errorf("unknown provider: %s", properties.Provider)
+	}
+
 	return properties, nil
 }

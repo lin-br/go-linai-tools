@@ -1,4 +1,7 @@
+provider: openrouter
 openrouter_api_key: ${OPENROUTER_API_KEY}
+# anthropic_api_key: ${ANTHROPIC_API_KEY}
+# bedrock_region: ${BEDROCK_REGION}
 models:
   default: ${DEFAULT_MODEL}
   pro: ${PRO_MODEL}

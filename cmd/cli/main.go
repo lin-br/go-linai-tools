@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -11,11 +12,12 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	properties := getProperties()
-	openRouter := clients.NewOpenRouterClient(*properties)
-	sendMessageUseCase := usecases.NewSendMessageUseCase(*properties, openRouter)
+	provider := buildProvider(properties)
+	sendMessageUseCase := usecases.NewSendMessageUseCase(*properties, provider)
 	cli := driving.NewCLI(sendMessageUseCase)
-	cli.StartAgent(os.Stdin, os.Stdout)
+	cli.StartAgent(ctx, os.Stdin, os.Stdout)
 }
 
 func getProperties() *configs.Config {
@@ -23,9 +25,15 @@ func getProperties() *configs.Config {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	if properties.OpenRouterApiKey == nil {
-		log.Fatal("OpenAI API key is missing in configuration")
-	}
 	return properties
+}
+
+func buildProvider(properties *configs.Config) *clients.OpenRouterProvider {
+	switch properties.Provider {
+	case configs.ProviderOpenRouter:
+		return clients.NewOpenRouterProvider(*properties.OpenRouterApiKey)
+	default:
+		log.Fatalf("unsupported provider: %s", properties.Provider)
+		return nil
+	}
 }
