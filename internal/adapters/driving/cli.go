@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 
+	"github.com/lin-br/go-linai-tools/internal/core/domain"
 	"github.com/lin-br/go-linai-tools/internal/core/usecases"
 )
 
@@ -29,16 +30,22 @@ func (c *CLI) StartAgent(ctx context.Context, in io.Reader, out io.Writer) {
 
 	for scanner.Scan() {
 		text := scanner.Text()
-		response, err := c.useCase.Send(ctx, text)
+		events, err := c.useCase.Stream(ctx, text)
 		if err != nil {
 			_, _ = writer.WriteString(err.Error() + "\n")
 			_ = writer.Flush()
 			log.Fatal(err)
 		}
 
-		_, err = writer.WriteString(response.Content + "\n")
-		if err != nil {
-			log.Fatal(err)
+		for event := range events {
+			switch event.Type {
+			case domain.StreamEventTypeText:
+				_, _ = writer.WriteString(event.Delta)
+			case domain.StreamEventTypeFinish:
+				_, _ = writer.WriteString("\n")
+			case domain.StreamEventTypeError:
+				_, _ = writer.WriteString("\n" + event.Err.Error() + "\n")
+			}
 		}
 		_ = writer.Flush()
 	}

@@ -22,19 +22,35 @@ func NewSendMessageUseCase(config configs.Config, provider outbound.Provider) *D
 }
 
 func (uc *DoSendMessageUseCase) Send(ctx context.Context, message string) (*domain.ChatResponse, error) {
+	req, err := uc.buildRequest(message)
+	if err != nil {
+		return nil, err
+	}
+
+	return uc.provider.Chat(ctx, req)
+}
+
+func (uc *DoSendMessageUseCase) Stream(ctx context.Context, message string) (<-chan domain.StreamEvent, error) {
+	req, err := uc.buildRequest(message)
+	if err != nil {
+		return nil, err
+	}
+
+	return uc.provider.ChatStream(ctx, req)
+}
+
+func (uc *DoSendMessageUseCase) buildRequest(message string) (*domain.ChatRequest, error) {
 	model, err := uc.parseModel()
 	if err != nil {
 		return nil, err
 	}
 
-	req := &domain.ChatRequest{
+	return &domain.ChatRequest{
 		Model: *model,
 		Messages: []domain.Message{
 			{Role: domain.MessageRoleUser, Content: message},
 		},
-	}
-
-	return uc.provider.Chat(ctx, req)
+	}, nil
 }
 
 func (uc *DoSendMessageUseCase) parseModel() (*string, error) {

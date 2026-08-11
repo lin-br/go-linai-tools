@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -66,9 +65,36 @@ func (o *OpenRouterProvider) Chat(ctx context.Context, req *domain.ChatRequest) 
 	return o.fromWire(&wireResp), nil
 }
 
-// ChatStream returns a not-implemented error; streaming is wired in MP1.
+// ChatStream opens a streaming chat completion request to OpenRouter and returns
+// a channel that emits domain.StreamEvent values as SSE chunks arrive.
 func (o *OpenRouterProvider) ChatStream(ctx context.Context, req *domain.ChatRequest) (<-chan domain.StreamEvent, error) {
-	return nil, errors.New("streaming not implemented yet")
+	req.Stream = true
+	payload := o.toWire(req)
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, openRouterBaseURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	o.setHeaders(httpReq)
+
+	resp, err := o.client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		defer resp.Body.Close()
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("openrouter returned HTTP %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	ch := make(chan domain.StreamEvent)
+	go streamLoop(ctx, resp.Body, ch)
+	return ch, nil
 }
 
 func (o *OpenRouterProvider) setHeaders(req *http.Request) {

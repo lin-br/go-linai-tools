@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"os/signal"
 
 	clients "github.com/lin-br/go-linai-tools/internal/adapters/driven/http_clients"
 	"github.com/lin-br/go-linai-tools/internal/adapters/driving"
@@ -12,7 +13,9 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	properties := getProperties()
 	provider := buildProvider(properties)
 	sendMessageUseCase := usecases.NewSendMessageUseCase(*properties, provider)
