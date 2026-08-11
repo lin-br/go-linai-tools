@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/lin-br/go-linai-tools/internal/core/domain"
+	"github.com/lin-br/go-linai-tools/internal/core/ports/outbound"
 )
 
 const openRouterBaseURL = "https://openrouter.ai/api/v1/chat/completions"
@@ -54,7 +54,7 @@ func (o *OpenRouterProvider) Chat(ctx context.Context, req *domain.ChatRequest) 
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("openrouter returned HTTP %d: %s", resp.StatusCode, string(respBody))
+		return nil, &outbound.ProviderError{StatusCode: resp.StatusCode, Body: string(respBody)}
 	}
 
 	var wireResp ChatCompletionResponse
@@ -89,7 +89,7 @@ func (o *OpenRouterProvider) ChatStream(ctx context.Context, req *domain.ChatReq
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		defer resp.Body.Close()
 		respBody, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("openrouter returned HTTP %d: %s", resp.StatusCode, string(respBody))
+		return nil, &outbound.ProviderError{StatusCode: resp.StatusCode, Body: string(respBody)}
 	}
 
 	ch := make(chan domain.StreamEvent)

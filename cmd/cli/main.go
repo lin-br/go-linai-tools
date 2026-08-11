@@ -7,6 +7,7 @@ import (
 	"os/signal"
 
 	clients "github.com/lin-br/go-linai-tools/internal/adapters/driven/http_clients"
+	"github.com/lin-br/go-linai-tools/internal/adapters/driven/retry"
 	"github.com/lin-br/go-linai-tools/internal/adapters/driving"
 	"github.com/lin-br/go-linai-tools/internal/configs"
 	"github.com/lin-br/go-linai-tools/internal/core/usecases"
@@ -31,10 +32,11 @@ func getProperties() *configs.Config {
 	return properties
 }
 
-func buildProvider(properties *configs.Config) *clients.OpenRouterProvider {
+func buildProvider(properties *configs.Config) *retry.RetryProvider {
 	switch properties.Provider {
 	case configs.ProviderOpenRouter:
-		return clients.NewOpenRouterProvider(*properties.OpenRouterApiKey)
+		inner := clients.NewOpenRouterProvider(*properties.OpenRouterApiKey)
+		return retry.NewRetryProvider(inner)
 	default:
 		log.Fatalf("unsupported provider: %s", properties.Provider)
 		return nil
