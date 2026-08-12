@@ -2,6 +2,8 @@ package tools
 
 import (
 	"testing"
+
+	"github.com/lin-br/go-linai-tools/internal/core/domain"
 )
 
 type schemaPerson struct {
@@ -207,4 +209,287 @@ func requiredContains(t *testing.T, schema map[string]any, field string) bool {
 		}
 	}
 	return false
+}
+
+// --- Nesting / recursion tests (MP6 Section 3) ---
+
+type schemaInner struct {
+	Name string `json:"name"`
+}
+
+type schemaOuter struct {
+	Inner schemaInner `json:"inner"`
+}
+
+type schemaPtrOuter struct {
+	Config *schemaInner `json:"config,omitempty"`
+}
+
+type schemaNode struct {
+	Next *schemaNode `json:"next,omitempty"`
+}
+
+type schemaStructSlice struct {
+	Items []schemaInner `json:"items"`
+}
+
+type schemaPtrStructSlice struct {
+	Items []*schemaInner `json:"items"`
+}
+
+type schemaScalarSlice struct {
+	Tags []string `json:"tags,omitempty"`
+}
+
+// 3.1 — nested struct field produces inline object schema with properties
+// and required.
+func TestSchemaFromStructNestedStruct(t *testing.T) {
+	schema, err := SchemaFromStruct(schemaOuter{})
+	if err != nil {
+		t.Fatalf("SchemaFromStruct returned error: %v", err)
+	}
+	props := schema["properties"].(map[string]any)
+	innerProp, ok := props["inner"].(map[string]any)
+	if !ok {
+		t.Fatalf("inner property is not a map: %T", props["inner"])
+	}
+	if got := innerProp["type"]; got != "object" {
+		t.Errorf("inner type = %v, want object", got)
+	}
+	innerProps, ok := innerProp["properties"].(map[string]any)
+	if !ok {
+		t.Fatalf("inner properties missing: %v", innerProp)
+	}
+	nameProp, ok := innerProps["name"].(map[string]any)
+	if !ok {
+		t.Fatalf("inner.name property missing: %v", innerProps)
+	}
+	if got := nameProp["type"]; got != "string" {
+		t.Errorf("inner.name type = %v, want string", got)
+	}
+	innerRequired, ok := innerProp["required"].([]string)
+	if !ok || len(innerRequired) != 1 || innerRequired[0] != "name" {
+		t.Errorf("inner required = %v, want [name]", innerProp["required"])
+	}
+	if !requiredContains(t, schema, "inner") {
+		t.Error("inner should be required (no omitempty)")
+	}
+}
+
+// 3.2 — pointer-to-struct field unwrapped to element type, omitempty excludes
+// from required.
+func TestSchemaFromStructPointerToStructField(t *testing.T) {
+	schema, err := SchemaFromStruct(schemaPtrOuter{})
+	if err != nil {
+		t.Fatalf("SchemaFromStruct returned error: %v", err)
+	}
+	props := schema["properties"].(map[string]any)
+	configProp, ok := props["config"].(map[string]any)
+	if !ok {
+		t.Fatalf("config property is not a map: %T", props["config"])
+	}
+	if got := configProp["type"]; got != "object" {
+		t.Errorf("config type = %v, want object (pointer should be unwrapped)", got)
+	}
+	configProps, ok := configProp["properties"].(map[string]any)
+	if !ok {
+		t.Fatalf("config properties missing: %v", configProp)
+	}
+	if _, ok := configProps["name"]; !ok {
+		t.Error("config.name property missing — pointer was not unwrapped to struct")
+	}
+	if requiredContains(t, schema, "config") {
+		t.Error("config should not be required (omitempty)")
+	}
+}
+
+// 3.3 — self-referential struct (Node{Next *Node}) terminates without panic,
+// next property is {}.
+func TestSchemaFromStructSelfReferential(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("SchemaFromStruct panicked on self-referential struct: %v", r)
+		}
+	}()
+
+	schema, err := SchemaFromStruct(schemaNode{})
+	if err != nil {
+		t.Fatalf("SchemaFromStruct returned error: %v", err)
+	}
+	props := schema["properties"].(map[string]any)
+	nextProp, ok := props["next"].(map[string]any)
+	if !ok {
+		t.Fatalf("next property is not a map: %T", props["next"])
+	}
+	if _, hasType := nextProp["type"]; hasType {
+		t.Errorf("next property should be opaque {} (cycle), got %v", nextProp)
+	}
+	if len(nextProp) != 0 {
+		t.Errorf("next property should be empty {} (cycle), got %v", nextProp)
+	}
+}
+
+// 3.4 — []Struct slice produces {type: "array", items: {type: "object", ...}}
+// with correct item schema.
+func TestSchemaFromStructStructSlice(t *testing.T) {
+	schema, err := SchemaFromStruct(schemaStructSlice{})
+	if err != nil {
+		t.Fatalf("SchemaFromStruct returned error: %v", err)
+	}
+	props := schema["properties"].(map[string]any)
+	itemsProp, ok := props["items"].(map[string]any)
+	if !ok {
+		t.Fatalf("items property is not a map: %T", props["items"])
+	}
+	if got := itemsProp["type"]; got != "array" {
+		t.Errorf("items type = %v, want array", got)
+	}
+	itemsSchema, ok := itemsProp["items"].(map[string]any)
+	if !ok {
+		t.Fatalf("items.items missing: %v", itemsProp)
+	}
+	if got := itemsSchema["type"]; got != "object" {
+		t.Errorf("items.items type = %v, want object", got)
+	}
+	itemProps, ok := itemsSchema["properties"].(map[string]any)
+	if !ok {
+		t.Fatalf("items.items.properties missing: %v", itemsSchema)
+	}
+	if _, ok := itemProps["name"]; !ok {
+		t.Error("items.items.properties.name missing")
+	}
+}
+
+// 3.4b — []*Struct slice produces array with unwrapped struct item schema.
+func TestSchemaFromStructPtrStructSlice(t *testing.T) {
+	schema, err := SchemaFromStruct(schemaPtrStructSlice{})
+	if err != nil {
+		t.Fatalf("SchemaFromStruct returned error: %v", err)
+	}
+	props := schema["properties"].(map[string]any)
+	itemsProp, ok := props["items"].(map[string]any)
+	if !ok {
+		t.Fatalf("items property is not a map: %T", props["items"])
+	}
+	if got := itemsProp["type"]; got != "array" {
+		t.Errorf("items type = %v, want array", got)
+	}
+	itemsSchema, ok := itemsProp["items"].(map[string]any)
+	if !ok {
+		t.Fatalf("items.items missing: %v", itemsProp)
+	}
+	if got := itemsSchema["type"]; got != "object" {
+		t.Errorf("items.items type = %v, want object (pointer unwrapped)", got)
+	}
+}
+
+// 3.5 — []string slice produces {type: "array", items: {type: "string"}}.
+func TestSchemaFromStructScalarSlice(t *testing.T) {
+	schema, err := SchemaFromStruct(schemaScalarSlice{})
+	if err != nil {
+		t.Fatalf("SchemaFromStruct returned error: %v", err)
+	}
+	props := schema["properties"].(map[string]any)
+	tagsProp, ok := props["tags"].(map[string]any)
+	if !ok {
+		t.Fatalf("tags property is not a map: %T", props["tags"])
+	}
+	if got := tagsProp["type"]; got != "array" {
+		t.Errorf("tags type = %v, want array", got)
+	}
+	itemsSchema, ok := tagsProp["items"].(map[string]any)
+	if !ok {
+		t.Fatalf("tags.items missing: %v", tagsProp)
+	}
+	if got := itemsSchema["type"]; got != "string" {
+		t.Errorf("tags.items type = %v, want string", got)
+	}
+}
+
+// 3.6 — SchemaFromStruct(&CodePlan{}) produces a complete schema with files as
+// an array of objects containing path, types, functions.
+func TestSchemaFromStructCodePlan(t *testing.T) {
+	schema, err := SchemaFromStruct(&domain.CodePlan{})
+	if err != nil {
+		t.Fatalf("SchemaFromStruct returned error: %v", err)
+	}
+	if got := schema["type"]; got != "object" {
+		t.Errorf("type = %v, want object", got)
+	}
+	props := schema["properties"].(map[string]any)
+
+	// files is an array of objects
+	filesProp, ok := props["files"].(map[string]any)
+	if !ok {
+		t.Fatalf("files property is not a map: %T", props["files"])
+	}
+	if got := filesProp["type"]; got != "array" {
+		t.Errorf("files type = %v, want array", got)
+	}
+	filesItems, ok := filesProp["items"].(map[string]any)
+	if !ok {
+		t.Fatalf("files.items missing: %v", filesProp)
+	}
+	if got := filesItems["type"]; got != "object" {
+		t.Errorf("files.items type = %v, want object", got)
+	}
+	fileProps, ok := filesItems["properties"].(map[string]any)
+	if !ok {
+		t.Fatalf("files.items.properties missing: %v", filesItems)
+	}
+	for _, key := range []string{"path", "description", "types", "functions"} {
+		if _, ok := fileProps[key]; !ok {
+			t.Errorf("files.items.properties.%s missing", key)
+		}
+	}
+
+	// types is an array of objects with name, description, fields
+	typesProp, ok := fileProps["types"].(map[string]any)
+	if !ok {
+		t.Fatalf("types property is not a map: %T", fileProps["types"])
+	}
+	if got := typesProp["type"]; got != "array" {
+		t.Errorf("types type = %v, want array", got)
+	}
+	typesItems, ok := typesProp["items"].(map[string]any)
+	if !ok {
+		t.Fatalf("types.items missing: %v", typesProp)
+	}
+	if got := typesItems["type"]; got != "object" {
+		t.Errorf("types.items type = %v, want object", got)
+	}
+	typeProps, ok := typesItems["properties"].(map[string]any)
+	if !ok {
+		t.Fatalf("types.items.properties missing: %v", typesItems)
+	}
+	for _, key := range []string{"name", "description", "fields"} {
+		if _, ok := typeProps[key]; !ok {
+			t.Errorf("types.items.properties.%s missing", key)
+		}
+	}
+
+	// functions is an array of objects with name, signature, description
+	funcsProp, ok := fileProps["functions"].(map[string]any)
+	if !ok {
+		t.Fatalf("functions property is not a map: %T", fileProps["functions"])
+	}
+	if got := funcsProp["type"]; got != "array" {
+		t.Errorf("functions type = %v, want array", got)
+	}
+	funcsItems, ok := funcsProp["items"].(map[string]any)
+	if !ok {
+		t.Fatalf("functions.items missing: %v", funcsProp)
+	}
+	if got := funcsItems["type"]; got != "object" {
+		t.Errorf("functions.items type = %v, want object", got)
+	}
+	funcProps, ok := funcsItems["properties"].(map[string]any)
+	if !ok {
+		t.Fatalf("functions.items.properties missing: %v", funcsItems)
+	}
+	for _, key := range []string{"name", "signature", "description"} {
+		if _, ok := funcProps[key]; !ok {
+			t.Errorf("functions.items.properties.%s missing", key)
+		}
+	}
 }

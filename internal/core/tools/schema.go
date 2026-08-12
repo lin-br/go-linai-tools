@@ -16,8 +16,8 @@ type ToolSchema struct {
 	InputSchema map[string]any
 }
 
-// SchemaFromStruct generates a basic JSON Schema (type "object" with
-// "properties" and "required") from the exported fields of v using reflect.
+// SchemaFromStruct generates a JSON Schema (type "object" with "properties"
+// and "required") from the exported fields of v using reflect.
 //
 // Field names are derived from json struct tags (the first comma-separated
 // part); fields without a json tag use the Go field name. Fields tagged with
@@ -30,9 +30,18 @@ type ToolSchema struct {
 //   - float32, float64 → "number"
 //   - bool → "boolean"
 //
-// Slices and arrays map to {"type": "array"}. All other types (nested structs,
-// maps, interfaces) produce an opaque {} — callers with complex schemas should
-// build the InputSchema map by hand.
+// Struct-typed fields (including pointer-to-struct, *T) are recursed into,
+// producing inline {"type": "object", "properties": {...}, "required": [...]}
+// sub-schemas. A cycle-detection set prevents infinite recursion on
+// self-referential structs; when a cycle is detected the property falls back
+// to an opaque {}.
+//
+// Slices and arrays map to {"type": "array", "items": {<element schema>}}.
+// For scalar slices ([]string, []int) the items schema is {"type": "<scalar>"}.
+// For struct slices ([]Struct, []*Struct) the items schema is the recursed
+// object schema for the element type.
+//
+// Maps, interfaces, any, and custom non-struct types produce an opaque {}.
 //
 // Non-struct input (including pointers to non-structs) returns an error.
 func SchemaFromStruct(v any) (map[string]any, error) {
@@ -47,6 +56,14 @@ func SchemaFromStruct(v any) (map[string]any, error) {
 		return nil, fmt.Errorf("schema: expected struct, got %s", t.Kind())
 	}
 
+	visited := map[reflect.Type]bool{t: true}
+	return schemaForStruct(t, visited), nil
+}
+
+// schemaForStruct generates a JSON Schema object for a struct type, iterating
+// over its exported fields. The visited map tracks the current recursion path
+// to detect cycles (self-referential structs).
+func schemaForStruct(t reflect.Type, visited map[reflect.Type]bool) map[string]any {
 	properties := make(map[string]any)
 	var required []string
 
@@ -60,7 +77,7 @@ func SchemaFromStruct(v any) (map[string]any, error) {
 			continue
 		}
 
-		properties[name] = schemaForType(f.Type)
+		properties[name] = schemaForType(f.Type, visited)
 		if !omitempty {
 			required = append(required, name)
 		}
@@ -73,7 +90,7 @@ func SchemaFromStruct(v any) (map[string]any, error) {
 	if len(required) > 0 {
 		schema["required"] = required
 	}
-	return schema, nil
+	return schema
 }
 
 // parseJSONTag extracts the JSON field name, whether omitempty is set, and
@@ -102,9 +119,14 @@ func parseJSONTag(f reflect.StructField) (name string, omitempty bool, skip bool
 }
 
 // schemaForType returns a JSON Schema fragment for the given Go type. Scalars
-// map to {"type": "..."}; slices and arrays map to {"type": "array"}; all
-// other types (nested structs, maps, interfaces) map to an opaque {}.
-func schemaForType(t reflect.Type) map[string]any {
+// map to {"type": "..."}; structs recurse into inline object sub-schemas;
+// slices and arrays map to {"type": "array", "items": {<element schema>}}.
+// Maps, interfaces, and custom non-struct types map to an opaque {}.
+//
+// The visited map tracks the current recursion path for cycle detection: when
+// a struct type is already on the path, schemaForType returns {} to break the
+// cycle.
+func schemaForType(t reflect.Type, visited map[reflect.Type]bool) map[string]any {
 	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
@@ -117,8 +139,19 @@ func schemaForType(t reflect.Type) map[string]any {
 		return map[string]any{"type": "number"}
 	case reflect.Bool:
 		return map[string]any{"type": "boolean"}
+	case reflect.Struct:
+		if visited[t] {
+			return map[string]any{}
+		}
+		visited[t] = true
+		s := schemaForStruct(t, visited)
+		delete(visited, t)
+		return s
 	case reflect.Slice, reflect.Array:
-		return map[string]any{"type": "array"}
+		return map[string]any{
+			"type":  "array",
+			"items": schemaForType(t.Elem(), visited),
+		}
 	default:
 		return map[string]any{}
 	}
