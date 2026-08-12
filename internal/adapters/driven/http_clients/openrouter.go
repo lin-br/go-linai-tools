@@ -158,9 +158,14 @@ func (o *OpenRouterProvider) toWire(req *domain.ChatRequest) *ChatCompletionRequ
 	}
 
 	if req.ToolChoice != nil {
-		wire.ToolChoice = &WireToolChoice{Type: req.ToolChoice.Type}
-		if req.ToolChoice.Type == domain.ToolChoiceTool {
-			wire.ToolChoice.Function = WireFuncChoice{Name: req.ToolChoice.Name}
+		switch req.ToolChoice.Type {
+		case domain.ToolChoiceTool:
+			wire.ToolChoice = &WireToolChoice{
+				Type:     "function",
+				Function: WireFuncChoice{Name: req.ToolChoice.Name},
+			}
+		default:
+			wire.ToolChoice = &WireToolChoice{Type: req.ToolChoice.Type}
 		}
 	}
 

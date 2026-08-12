@@ -50,8 +50,7 @@ func SchemaFromStruct(v any) (map[string]any, error) {
 	properties := make(map[string]any)
 	var required []string
 
-	for i := 0; i < t.NumField(); i++ {
-		f := t.Field(i)
+	for f := range t.Fields() {
 		if !f.IsExported() {
 			continue
 		}

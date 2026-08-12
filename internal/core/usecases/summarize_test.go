@@ -26,10 +26,24 @@ type fakeProvider struct {
 	streamCh    chan domain.StreamEvent
 	events      []domain.StreamEvent
 	delay       time.Duration
+	chatResp    *domain.ChatResponse
+	chatErr     error
+	chatGotCtx  context.Context
+	chatGotReq  *domain.ChatRequest
+	chatCalls   int
 }
 
-func (f *fakeProvider) Chat(_ context.Context, _ *domain.ChatRequest) (*domain.ChatResponse, error) {
-	return nil, nil
+func (f *fakeProvider) Chat(ctx context.Context, req *domain.ChatRequest) (*domain.ChatResponse, error) {
+	f.chatGotCtx = ctx
+	f.chatGotReq = req
+	f.chatCalls++
+	if f.chatErr != nil {
+		return nil, f.chatErr
+	}
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	return f.chatResp, nil
 }
 
 func (f *fakeProvider) ChatStream(ctx context.Context, req *domain.ChatRequest) (<-chan domain.StreamEvent, error) {
