@@ -15,13 +15,13 @@ north_star:
   - "Ship 9 LinkedIn posts (one per phase, within 3 days of phase completion)"
 language: Go (net/http over SDKs, to learn the wire protocol)
 started: 2026-05-29
-current_phase: 1
-current_phase_status: in_progress
-phases_complete: [0]
-phases_remaining: [1, 2, 3, 4, 5, 6, 7, 8]
+current_phase: 2
+current_phase_status: complete
+phases_complete: [0, 2]
+phases_remaining: [1, 3, 4, 5, 6, 7, 8]
 hours_invested: 8
 app_status: not_started
-next_action: "Finish Phase 1 — complete go-llm-tools/ with 3 CLIs, StreamClient, retry wrapper, then publish LinkedIn post #1"
+next_action: "Publish LinkedIn post #2 ('RAG in Go — why your chunks matter more than your vector DB'). Phase 2 is COMPLETE: code + unit tests + live e2e (ingest/query/eval against pgvector with real Voyage/OpenRouter/Cohere keys) all verified. Then close Phase 1's LinkedIn post #1 or start Phase 3."
 postgrad_decision: pending (leaning skip)
 ```
 
@@ -30,8 +30,9 @@ postgrad_decision: pending (leaning skip)
 ## Where I am right now
 
 - **Phase 0 — Mental Model:** COMPLETE (2026-05-29 → 2026-06-18). Deliverable `wiki/concepts/llm-basics.md` shipped. LinkedIn post #0 published 2026-05-31.
-- **Phase 1 — Hands on the API, Go-style:** IN PROGRESS (started 2026-06-23). Building `go-llm-tools/` externally. Three CLI mini-projects planned: `summarize`, `extract`, `spec-to-code`. Problems/insights/LinkedIn moment still pending.
-- **Phase 2 onward:** NOT STARTED.
+- **Phase 1 — Hands on the API, Go-style:** IN PROGRESS (started 2026-06-23). Building `go-llm-tools/` externally. Three CLI mini-projects planned: `summarize`, `extract`, `spec-to-code`. Problems/insights/LinkedIn moment still pending. Its `outbound.Provider` abstraction, `configs` loader, and `retry` wrapper are reused by Phase 2 (dependencies satisfied).
+- **Phase 2 — RAG First:** COMPLETE. All seven microphases implemented in-repo: `internal/rag/{embeddings,store,chunk,search,rerank,eval}` + `cmd/rag` (`ingest`/`query`/`eval`). Unit tests green; live end-to-end verified against a local pgvector container with real Voyage/OpenRouter/Cohere keys (ingest stored 4 chunks; query returned a grounded, source-cited answer; eval printed metrics with LLM-judge scores). `openspec validate --changes phase-2-rag` clean. Reuses Phase 1's `outbound.Provider`, `configs` loader, and `retry` wrapper (Phase 1 dependencies satisfied). LinkedIn post #2 pending.
+- **Phase 3 onward:** NOT STARTED.
 
 The user is early in Phase 1. No code deliverables have been logged as complete yet.
 
@@ -66,20 +67,21 @@ Each phase below carries: status, goal, deliverables (completion criteria), what
 - **To complete:** finish the 3 CLIs, wire StreamClient + retry, then publish LinkedIn post #1 ("Building an LLM client in Go — what the official SDKs hide").
 - **Guides:** `wiki/phase-1-playbook-go-llm.md`, `wiki/phase-1-guide.md`, `wiki/phase-1-guide-continued.md`, `wiki/phase-1-guide-final.md`, `wiki/concepts/streaming-llm.md`, `wiki/concepts/structured-outputs.md`.
 
-### Phase 2 — RAG First (Weeks 4–6) — NOT STARTED
+### Phase 2 — RAG First (Weeks 4–6) — COMPLETE
 
 - **Goal:** working RAG pipeline over personal PDFs that retrieves the right thing, proven with numbers.
 - **Deliverables:**
-  1. `go-rag-lab/` repo.
-  2. Embeddings client (Voyage API, ~40 lines; `voyage-3-large` default).
-  3. pgvector via `pgx` + `pgvector-go` (schema: id, content, embedding vector(1024), metadata jsonb, source_path).
-  4. Chunking: recursive char split → then contextual chunking (Anthropic 2024 — prepend 1-sentence doc summary per chunk).
-  5. Hybrid search: BM25 (`blevesearch`) + vector → RRF merge.
-  6. Reranking: Cohere Rerank API.
-  7. Eval suite (no framework): `.jsonl` of 20–30 `{query, expected_doc_id}`; metrics precision@k, recall@k, MRR; LLM-as-judge.
-  8. CLIs: `rag query "pergunta"`, `rag eval`.
+  1. `go-rag-lab/` repo. *(Implemented in-repo as `internal/rag/` + `cmd/rag/` per the Phase 2 OpenSpec proposal/design; monorepo decision supersedes the separate-repo plan.)*
+  2. Embeddings client (Voyage API, ~40 lines; `voyage-3-large` default). — `internal/rag/embeddings/`
+  3. pgvector via `pgx` + `pgvector-go` (schema: id, content, embedding vector(1024), metadata jsonb, source_path). — `internal/rag/store/`
+  4. Chunking: recursive char split → then contextual chunking (Anthropic 2024 — prepend 1-sentence doc summary per chunk). — `internal/rag/chunk/`
+  5. Hybrid search: BM25 (`blevesearch`) + vector → RRF merge. — `internal/rag/search/`
+  6. Reranking: Cohere Rerank API. — `internal/rag/rerank/`
+  7. Eval suite (no framework): `.jsonl` of 20–30 `{query, expected_doc_id}`; metrics precision@k, recall@k, MRR; LLM-as-judge. — `internal/rag/eval/` + `../tests/evals/golden.jsonl` (20 examples)
+  8. CLIs: `rag query "pergunta"`, `rag eval`. — `cmd/rag/{main,ingest,query,eval}.go`
 - **Anti-patterns to internalize:** RAG when model already knows; fixed-512-token chunking; no reranker; no evals.
-- **To complete:** ship repo + eval suite with before/after metrics; publish LinkedIn post #2 ("RAG in Go — why your chunks matter more than your vector DB").
+- **Done:** all 8 deliverables shipped; unit tests + live e2e verified against a local pgvector container with real Voyage/OpenRouter/Cohere keys (`go build`/`go vet`/`go test ./...` green; `openspec validate --changes phase-2-rag` clean). Sample run: ingest stored 4 chunks; `query "what was the total income in March 2025?"` returned a grounded, source-cited answer; `eval -judge` reported `avg_precision_at_k 0.2`, `avg_recall_at_k 1`, `avg_mrr 0.75`, `avg_judge_score 5`.
+- **To complete:** publish LinkedIn post #2 ("RAG in Go — why your chunks matter more than your vector DB").
 - **Concepts to write:** embeddings, chunking, vector-db, reranking, rag-evals.
 
 ### Phase 3 — Tool Use, Agents & Micro-Framework (Weeks 7–9) — NOT STARTED

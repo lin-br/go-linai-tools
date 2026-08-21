@@ -6,3 +6,6 @@ models:
   default: ${DEFAULT_MODEL}
   pro: ${PRO_MODEL}
   free: ${FREE_MODEL}
+postgres_dsn: ${POSTGRES_DSN}
+default_embedding_model: ${DEFAULT_EMBEDDING_MODEL}
+default_rerank_model: ${DEFAULT_RERANK_MODEL}

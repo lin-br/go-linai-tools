@@ -98,10 +98,7 @@ func (o *OpenRouterProvider) ChatStream(ctx context.Context, req *domain.ChatReq
 }
 
 func (o *OpenRouterProvider) setHeaders(req *http.Request) {
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+o.apiKey)
-	req.Header.Set("HTTP-Referer", "lin.com.br")
-	req.Header.Set("X-OpenRouter-Title", "lin.com.br")
+	setOpenRouterHeaders(req, o.apiKey)
 }
 
 func (o *OpenRouterProvider) toWire(req *domain.ChatRequest) *ChatCompletionRequest {

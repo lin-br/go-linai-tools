@@ -1,0 +1,20 @@
+{"query":"What was my total income in March 2025?","expected_chunk_id":"11111111-1111-1111-1111-111111111101","expected_answer":"Total income in March 2025 was R$ 12.450,00 from salary plus R$ 1.200,00 freelance."}
+{"query":"How much did I spend on groceries in April?","expected_chunk_id":"11111111-1111-1111-1111-111111111102","expected_answer":"Groceries spend in April was R$ 1.832,15 across 14 transactions."}
+{"query":"What is the balance of my Itau checking account?","expected_chunk_id":"11111111-1111-1111-1111-111111111103","expected_answer":"The Itau checking account balance was R$ 8.234,90."}
+{"query":"Did I exceed my dining out budget in May?","expected_chunk_id":"11111111-1111-1111-1111-111111111104","expected_answer":"Yes, dining out in May was R$ 980 against a R$ 600 budget, exceeding by R$ 380."}
+{"query":"What were my investment contributions in Q1?","expected_chunk_id":"11111111-1111-1111-1111-111111111105","expected_answer":"Q1 investment contributions totaled R$ 9.000,00 split across ETFs and Tesouro Direto."}
+{"query":"How much tax was withheld on my December bonus?","expected_chunk_id":"11111111-1111-1111-1111-111111111106","expected_answer":"IRRF withheld on the December bonus was R$ 2.138,00 (22.5% bracket)."}
+{"query":"What is the APR on my Inter credit card?","expected_chunk_id":"11111111-1111-1111-1111-111111111107","expected_answer":"The Inter credit card revolving APR is 14.9% per month."}
+{"query":"When does my car financing end?","expected_chunk_id":"11111111-1111-1111-1111-111111111108","expected_answer":"The car financing ends in October 2027, 36 months, last installment R$ 1.209,30."}
+{"query":"How much did I save in 2024?","expected_chunk_id":"11111111-1111-1111-1111-111111111109","expected_answer":"Total savings in 2024 were R$ 24.600,00, 18% of net income."}
+{"query":"What was my biggest expense in June?","expected_chunk_id":"11111111-1111-1111-1111-111111111110","expected_answer":"The biggest expense in June was the annual car insurance at R$ 3.215,00."}
+{"query":"How much do I spend on average per month on transportation?","expected_chunk_id":"11111111-1111-1111-1111-111111111111","expected_answer":"Average monthly transportation spend is R$ 412,00 (fuel plus rideshare)."}
+{"query":"What is my current net worth?","expected_chunk_id":"11111111-1111-1111-1111-111111111112","expected_answer":"Net worth is R$ 184.300,00: assets R$ 210.500 minus debts R$ 26.200."}
+{"query":"How much do I owe on my student loan?","expected_chunk_id":"11111111-1111-1111-1111-111111111113","expected_answer":"Outstanding student loan balance is R$ 18.640,00 with 22 months remaining."}
+{"query":"What was my electric bill average in summer?","expected_chunk_id":"11111111-1111-1111-1111-111111111114","expected_answer":"Average electric bill in summer (Dec-Feb) was R$ 287,40 due to AC usage."}
+{"query":"How much did I invest in crypto this year?","expected_chunk_id":"11111111-1111-1111-1111-111111111115","expected_answer":"Crypto investments this year were R$ 4.500,00 across BTC and ETH."}
+{"query":"What is my emergency fund target?","expected_chunk_id":"11111111-1111-1111-1111-111111111116","expected_answer":"The emergency fund target is 6 months of expenses, about R$ 27.000,00."}
+{"query":"Did I receive the tax refund?","expected_chunk_id":"11111111-1111-1111-1111-111111111117","expected_answer":"Yes, the R$ 1.847,00 IRPF refund was deposited in September."}
+{"query":"How much did I spend on health insurance in 2024?","expected_chunk_id":"11111111-1111-1111-1111-111111111118","expected_answer":"Health insurance in 2024 cost R$ 4.380,00, R$ 365 per month."}
+{"query":"What is the yield on my CDB investment?","expected_chunk_id":"11111111-1111-1111-1111-111111111119","expected_answer":"The CDB yields 110% of CDI, maturing in 2026."}
+{"query":"How much cash do I have on hand?","expected_chunk_id":"11111111-1111-1111-1111-111111111120","expected_answer":"Cash on hand is R$ 320,00; liquid checking balances total R$ 9.554,90."}

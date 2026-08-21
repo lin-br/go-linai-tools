@@ -131,5 +131,5 @@ Rollback: delete `internal/rag/`, `cmd/rag/`, and revert `go.mod`/`configs.yaml`
 ## Open Questions
 
 - Should `rag ingest` accept directories recursively, or only single files? (Spec assumes single file first; directory support is a follow-up.)
-- Should the eval dataset live in `cmd/rag/testdata/` or in a top-level `rag-datasets/` directory? (Spec assumes `cmd/rag/testdata/golden.jsonl`.)
+- Should the eval dataset live in `cmd/rag/testdata/` or in a top-level `rag-datasets/` directory? (Spec assumes `../../../../tests/evals/golden.jsonl`.)
 - Should hybrid search also include a naive keyword baseline for comparison? (Out of scope for MP10; could be added in MP12.)

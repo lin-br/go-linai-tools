@@ -9,6 +9,11 @@ import (
 
 const propertiesFilePath = "./internal/configs/configs.yaml"
 
+const (
+	DefaultEmbeddingModel = "voyage/voyage-3-large"
+	DefaultRerankModel    = "cohere/rerank-v3.5"
+)
+
 func isValid(a *string) bool {
 	if a == nil || *a == "" {
 		return false
@@ -43,14 +48,21 @@ func (m *Models) Get() *string {
 }
 
 type Config struct {
-	Provider         string  `yaml:"provider"`
-	OpenRouterApiKey *string `yaml:"openrouter_api_key"`
-	AnthropicApiKey  *string `yaml:"anthropic_api_key"`
-	BedrockRegion    *string `yaml:"bedrock_region"`
-	Models           *Models `yaml:"models"`
+	Provider              string  `yaml:"provider"`
+	OpenRouterApiKey      *string `yaml:"openrouter_api_key"`
+	AnthropicApiKey       *string `yaml:"anthropic_api_key"`
+	BedrockRegion         *string `yaml:"bedrock_region"`
+	Models                *Models `yaml:"models"`
+	PostgresDSN           *string `yaml:"postgres_dsn"`
+	DefaultEmbeddingModel *string `yaml:"default_embedding_model"`
+	DefaultRerankModel    *string `yaml:"default_rerank_model"`
 }
 
 func LoadConfigs() (*Config, error) {
+	if err := loadDotEnv(envFilePath); err != nil {
+		return nil, err
+	}
+
 	file, err := os.ReadFile(propertiesFilePath)
 	if err != nil {
 		return nil, err
@@ -66,6 +78,15 @@ func LoadConfigs() (*Config, error) {
 
 	if properties.Provider == "" {
 		properties.Provider = ProviderOpenRouter
+	}
+
+	if !isValid(properties.DefaultEmbeddingModel) {
+		m := DefaultEmbeddingModel
+		properties.DefaultEmbeddingModel = &m
+	}
+	if !isValid(properties.DefaultRerankModel) {
+		m := DefaultRerankModel
+		properties.DefaultRerankModel = &m
 	}
 
 	switch properties.Provider {
